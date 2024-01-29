@@ -1,0 +1,75 @@
+import cv2
+import numpy as np
+import tensorflow as tf
+
+# Load pre-trained face detection model from OpenCV
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+# Load pre-trained face recognition model from TensorFlow
+model = tf.keras.applications.MobileNetV2(weights='imagenet', input_shape=(160, 160, 3))
+model.trainable = False
+
+# Function to preprocess image for the face recognition model
+def preprocess_image(image):
+    image = cv2.resize(image, (160, 160))
+    image = image / 255.0  # Normalize pixel values to be between 0 and 1
+    image = np.expand_dims(image, axis=0)  # Add batch dimension
+    return image
+
+# Function to perform face recognition
+def recognize_face(image):
+    face = face_cascade.detectMultiScale(image, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+
+    if len(face) == 1:
+        x, y, w, h = face[0]
+        face_roi = image[y:y+h, x:x+w]
+
+        # Preprocess image for the model
+        preprocessed_face = preprocess_image(face_roi)
+
+        # Use the pre-trained model for face recognition
+        embedding = model.predict(preprocessed_face)
+
+        # Perform identity verification (dummy implementation)
+        verified = verify_identity(embedding)  # You need to implement this function
+
+        return verified
+
+    return False
+
+# Dummy implementation of identity verification
+def verify_identity(embedding):
+    # In a real system, you would compare the embedding with a database of known embeddings
+    # and use a threshold to decide if it's a match or not.
+    # This is a placeholder for demonstration purposes.
+    return np.random.choice([True, False])
+
+# Main function for running the biometric verification system
+def main():
+    # Capture video from the camera
+    cap = cv2.VideoCapture(0)
+
+    while True:
+        ret, frame = cap.read()
+
+        # Perform face recognition
+        verified = recognize_face(frame)
+
+        # Display the result
+        if verified:
+            cv2.putText(frame, "Identity Verified", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        else:
+            cv2.putText(frame, "Identity Not Verified", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+        cv2.imshow("Biometric Verification System", frame)
+
+        # Break the loop if 'q' is pressed
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    # Release the capture
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()
